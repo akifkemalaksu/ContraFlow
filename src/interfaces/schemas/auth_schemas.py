@@ -1,0 +1,49 @@
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr
+
+
+class RegisterRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class UserResponse(BaseModel):
+    id: UUID
+    email: str
+    roles: list[str]
+    is_active: bool
+    created_at: datetime
+
+
+class APIKeyCreateRequest(BaseModel):
+    scopes: list[str] = []
+    expires_in_days: int | None = None
+
+
+class APIKeyResponse(BaseModel):
+    id: UUID
+    prefix: str
+    scopes: list[str]
+    expires_at: datetime | None
+    created_at: datetime
+
+
+class APIKeyCreatedResponse(APIKeyResponse):
+    raw_key: str  # Yalnızca oluşturma anında döner

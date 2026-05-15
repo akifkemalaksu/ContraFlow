@@ -1,0 +1,20 @@
+# Env files — sadece .env.example commit'lenir
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+dist/
+*.egg-info/
+
+# Test
+.pytest_cache/
+.coverage
+
+# IDE
+.idea/
+.vscode/

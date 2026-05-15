@@ -1,0 +1,48 @@
+import os
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_environment = os.getenv("ENVIRONMENT", "development")
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=f".env.{_environment}",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # App
+    APP_NAME: str = "ContraFlow"
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = False
+
+    # Database
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/contraflow"
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # JWT
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # API Key
+    API_KEY_SECRET: str
+    API_KEY_PREFIX_LENGTH: int = 8
+
+    # CORS
+    ALLOWED_ORIGINS: list[str] = ["*"]
+
+    @property
+    def celery_broker_url(self) -> str:
+        return self.REDIS_URL
+
+    @property
+    def celery_result_backend(self) -> str:
+        return self.REDIS_URL
+
+
+settings = Settings()
