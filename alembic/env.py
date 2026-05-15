@@ -9,9 +9,15 @@ from alembic import context
 
 from src.config import settings
 from src.infrastructure.database.session import Base
-import src.infrastructure.database.models.role_model  # noqa: F401 — register models
+import src.infrastructure.database.models.role_model  # noqa: F401
 import src.infrastructure.database.models.user_model  # noqa: F401
 import src.infrastructure.database.models.api_key_model  # noqa: F401
+import src.infrastructure.database.models.account_model  # noqa: F401
+import src.infrastructure.database.models.asset_model  # noqa: F401
+import src.infrastructure.database.models.copy_strategy_model  # noqa: F401
+import src.infrastructure.database.models.cross_asset_trigger_model  # noqa: F401
+import src.infrastructure.database.models.order_model  # noqa: F401
+import src.infrastructure.database.models.fill_model  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

@@ -20,7 +20,7 @@ FastAPI tabanlı, Domain-Driven Design (DDD) mimarisiyle inşa edilmiş Python m
 ```
 src/
 ├── domain/           # Saf iş mantığı — dışa bağımlılık yok
-│   ├── entities/         # User, Role
+│   ├── entities/         # User, Role, Account, Asset, Order, Fill, CopyStrategy, CrossAssetTrigger
 │   ├── value_objects/    # APIKey
 │   ├── events/
 │   └── repositories/     # Soyut interface'ler (ABC)
@@ -49,25 +49,55 @@ src/
 ## Veritabanı Şeması
 
 ```
-users          roles          user_roles (n:n)
-─────────      ──────         ────────────────
-id (PK)        id (PK)        user_id (FK)
-email          name           role_id (FK)
-hashed_pw      description
-is_active      created_at
+users               roles           user_roles (n:n)
+──────────────      ──────────      ────────────────
+id (PK, UUID)       id (PK)         user_id (FK → users)
+email               name            role_id (FK → roles)
+hashed_password     description
+is_active           created_at
 created_at
 updated_at
 
-api_keys
-────────
-id (PK)
-owner_id (FK → users)
-prefix
-hashed_key
-scopes[]
+api_keys                        accounts
+────────────────────────        ────────────────────────────────
+id (PK, UUID)                   address (PK, VARCHAR 42)
+owner_id (FK → users)           user_id (FK → users)
+prefix                          account_type  (master/sub/vault)
+hashed_key                      agent_address
+scopes[]                        is_active
 expires_at
 is_active
 created_at
+
+assets                          copy_strategies
+──────────────────              ──────────────────────────────────
+asset_id (PK, INT)              id (PK, SERIAL)
+symbol                          user_wallet (FK → accounts.address)
+sz_decimals                     target_wallet
+is_perp                         direction  (forward/reverse)
+                                copy_ratio
+                                markup_pct
+                                pnl_control_enabled
+
+cross_asset_triggers            orders
+──────────────────────────      ────────────────────────────────────
+id (PK, SERIAL)                 oid (PK, BIGINT — Hyperliquid ID)
+strategy_id (FK →               owner_address (FK → accounts.address)
+  copy_strategies)              asset_id (FK → assets)
+ref_asset_id (FK → assets)      strategy_id (FK → copy_strategies, nullable)
+operator  (GT/LT)               is_buy
+threshold_px                    limit_px
+close_pct                       sz
+                                status  (open/filled/canceled/rejected)
+
+fills
+──────────────────────────
+fill_id (PK, UUID string)
+oid (FK → orders)
+owner_address (FK → accounts.address)
+px
+sz
+timestamp (ms epoch)
 ```
 
 ## API Endpoint'leri
@@ -131,8 +161,53 @@ ENVIRONMENT=development uvicorn src.main:app --reload
 
 ### Migration Oluşturma
 
+Yeni bir entity veya model değişikliği yapıldığında:
+
 ```bash
-ENVIRONMENT=development alembic revision --autogenerate -m "açıklama"
+# 1. alembic/env.py dosyasına yeni modeli import et (yoksa Alembic tabloyu görmez)
+#    Örnek: import src.infrastructure.database.models.yeni_model  # noqa: F401
+
+# 2. Değişiklikleri otomatik tespit ederek revision dosyası oluştur
+ENVIRONMENT=development alembic revision --autogenerate -m "add yeni_tablo"
+
+# 3. Oluşturulan dosyayı kontrol et (alembic/versions/ altında)
+#    Alembic bazen Enum ya da özel tip değişikliklerini kaçırabilir — gözden geçir.
+
+# 4. Migration'ı uygula
+ENVIRONMENT=development alembic upgrade head
+```
+
+### Migration Geri Alma
+
+```bash
+# Son migration'ı geri al
+ENVIRONMENT=development alembic downgrade -1
+
+# Tüm migration'ları geri al (boş DB)
+ENVIRONMENT=development alembic downgrade base
+
+# Mevcut DB revision'ını göster
+ENVIRONMENT=development alembic current
+
+# Tüm migration geçmişini listele
+ENVIRONMENT=development alembic history --verbose
+```
+
+### DB'yi Sıfırlayıp Baştan Oluşturma (Dev ortamı)
+
+Migration'ları baştan oluşturmak gerektiğinde (örn. tüm şemayı tek bir initial migration'a toplamak):
+
+```bash
+# 1. DB şemasını sıfırla
+psql -U postgres -d contraflow -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+# 2. Eski migration dosyalarını sil
+rm alembic/versions/*.py
+
+# 3. Tüm modeller env.py'de import edildiğinden emin ol, sonra yeniden oluştur
+ENVIRONMENT=development alembic revision --autogenerate -m "initial"
+
+# 4. Uygula
 ENVIRONMENT=development alembic upgrade head
 ```
 

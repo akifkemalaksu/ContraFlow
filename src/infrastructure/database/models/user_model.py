@@ -26,3 +26,6 @@ class UserModel(Base):
     roles: Mapped[list["RoleModel"]] = relationship(  # noqa: F821
         "RoleModel", secondary=user_roles_table, back_populates="users", lazy="selectin"
     )
+    accounts: Mapped[list["AccountModel"]] = relationship(  # noqa: F821
+        "AccountModel", back_populates="user"
+    )
