@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     # CORS
     ALLOWED_ORIGINS: list[str] = ["*"]
 
+    # Hyperliquid
+    HYPERLIQUID_USE_TESTNET: bool = True
+    HYPERLIQUID_MAINNET_URL: str = "https://api.hyperliquid.xyz"
+    HYPERLIQUID_TESTNET_URL: str = "https://api.hyperliquid-testnet.xyz"
+
+    @property
+    def hyperliquid_base_url(self) -> str:
+        return self.HYPERLIQUID_TESTNET_URL if self.HYPERLIQUID_USE_TESTNET else self.HYPERLIQUID_MAINNET_URL
+
     @property
     def celery_broker_url(self) -> str:
         return self.REDIS_URL
