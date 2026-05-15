@@ -37,10 +37,12 @@ packages = ["src"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
 env = [
     "ENVIRONMENT=test",
-    "DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/contraflow_test",
+    "DATABASE_URL=postgresql+asyncpg://admin:admin123@localhost:5432/contraflow_test",
     "REDIS_URL=redis://localhost:6379/1",
     "SECRET_KEY=test-secret-key-not-for-production",
     "API_KEY_SECRET=test-api-key-secret",
