@@ -1,7 +1,5 @@
-# Env files — sadece .env.example commit'lenir
+# Env files
 .env
-.env.*
-!.env.example
 
 # Python
 __pycache__/
