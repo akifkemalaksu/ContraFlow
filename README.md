@@ -14,6 +14,7 @@ FastAPI tabanlı, Domain-Driven Design (DDD) mimarisiyle inşa edilmiş Python m
 | Auth | JWT (Access + Refresh) & API Key |
 | Config | pydantic-settings |
 | Test | pytest + httpx (smoke) |
+| Exchange | Hyperliquid (hyperliquid-python-sdk) |
 
 ## Mimari
 
@@ -36,7 +37,16 @@ src/
 │   │   ├── repositories/ # Concrete repo impl.
 │   │   └── session.py    # Async engine + session factory
 │   ├── cache/            # Redis bağlantısı
+│   ├── hyperliquid/      # Hyperliquid SDK entegrasyonu
+│   │   ├── client.py         # Info client (market data, WS)
+│   │   ├── exchange_client.py# Exchange client (order imzalama)
+│   │   ├── ws_manager.py     # WebSocket abonelik yöneticisi
+│   │   └── copy_trading/
+│   │       └── engine.py     # Copy trading motoru
 │   └── tasks/            # Celery worker'ları
+│       └── workers/
+│           ├── hl_sync.py        # Asset & fill senkronizasyonu
+│           └── copy_trading.py   # Copy watch başlatma/durdurma
 │
 └── interfaces/       # Dış dünyayla temas noktaları
     ├── api/v1/
@@ -122,6 +132,59 @@ timestamp (ms epoch)
 |--------|------|----------|
 | `GET` | `/health` | Sağlık kontrolü |
 | `GET` | `/docs` | OpenAPI (development/test) |
+
+## Hyperliquid Entegrasyonu
+
+### Bileşenler
+
+| Bileşen | Sınıf | Açıklama |
+|---------|-------|----------|
+| Market data | `HyperliquidInfoClient` | Asset listesi, mid fiyatlar, order book, fill ve open order sorgulama |
+| Order yönetimi | `HyperliquidExchangeClient` | Limit/market order açma, iptal, pozisyon kapatma, agent approve |
+| WebSocket | `HyperliquidWSManager` | `userFills`, `allMids`, `orderUpdates` aboneliklerini yönetir |
+| Copy trading | `CopyTradingEngine` | Target wallet filllerini dinler, strateji kurallarını uygular, emir açar |
+
+### Copy Trading Akışı
+
+```
+Target wallet fill (WebSocket)
+  → CopyStrategy listesi sorgulanır
+  → Her strateji için:
+      1. CrossAssetTrigger kontrol edilir (ref asset fiyatı eşiği aştıysa pozisyon kapatılır)
+      2. Direction uygulanır  — FORWARD: aynı yön, REVERSE: ters yön
+      3. Boyut hesaplanır    — sz × copy_ratio
+      4. Fiyat hesaplanır    — limit_px × (1 ± markup_pct%)
+      5. Kullanıcı cüzdanında limit order açılır
+      6. Order & fill DB'ye kaydedilir
+```
+
+### Celery Task'ları
+
+| Task | Tetikleyici | Açıklama |
+|------|-------------|----------|
+| `hl.sync_assets` | Beat (saatlik) | Tüm perp ve spot asset'leri HL'den çekip DB'ye yazar |
+| `hl.sync_fills` | Manuel / cron | Bir adrese ait geçmiş filleri senkronize eder |
+| `hl.sync_open_orders` | Manuel / cron | Açık order durumlarını günceller |
+| `hl.start_copy_watch` | Manuel | Long-lived task; target wallet'ı WebSocket ile izler |
+| `hl.stop_copy_watch` | Manuel | Aktif copy_watch task'ını revoke eder |
+
+### Private Key Yönetimi
+
+`HyperliquidExchangeClient` private key'i constructor'da alır, saklamaz. Varsayılan resolver env değişkeninden okur:
+
+```
+HL_PRIVATE_KEY_<WALLET_ADDRESS_BÜYÜK_HARF>
+```
+
+Production'da bunu Vault veya AWS Secrets Manager gibi bir backend ile değiştir:
+`src/infrastructure/tasks/workers/copy_trading.py` içindeki `_resolve_private_key` fonksiyonunu override et.
+
+### Ortam Konfigürasyonu
+
+| Ortam | `HYPERLIQUID_USE_TESTNET` | API URL |
+|-------|--------------------------|---------|
+| development / docker / staging / test | `true` | `api.hyperliquid-testnet.xyz` |
+| production | `false` | `api.hyperliquid.xyz` |
 
 ## Ortam Yapılandırması
 
