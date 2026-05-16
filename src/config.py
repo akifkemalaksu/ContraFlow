@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "ContraFlow"
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
+    SEED_ON_STARTUP: bool = True
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/contraflow"

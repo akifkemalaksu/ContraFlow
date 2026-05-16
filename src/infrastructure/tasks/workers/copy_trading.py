@@ -16,7 +16,6 @@ def start_copy_watch(target_wallet: str):
     """
     from src.infrastructure.database.repositories.copy_strategy_repository import CopyStrategyRepository
     from src.infrastructure.database.repositories.cross_asset_trigger_repository import CrossAssetTriggerRepository
-    from src.infrastructure.database.repositories.fill_repository import FillRepository
     from src.infrastructure.database.repositories.order_repository import OrderRepository
     from src.infrastructure.database.session import AsyncSessionFactory
     from src.infrastructure.hyperliquid.client import HyperliquidInfoClient
@@ -24,18 +23,24 @@ def start_copy_watch(target_wallet: str):
     from src.infrastructure.hyperliquid.ws_manager import HyperliquidWSManager
 
     async def _run():
+        from src.application.services.copy_trading import CopyTradingService
+        from src.infrastructure.hyperliquid.exchange_client_factory import HyperliquidExchangeClientFactory
+
         info_client = HyperliquidInfoClient()
         ws_manager = HyperliquidWSManager(info_client)
 
         async with AsyncSessionFactory() as session:
-            engine = CopyTradingEngine(
+            service = CopyTradingService(
                 strategy_repo=CopyStrategyRepository(session),
                 order_repo=OrderRepository(session),
-                fill_repo=FillRepository(session),
                 trigger_repo=CrossAssetTriggerRepository(session),
+                exchange_factory=HyperliquidExchangeClientFactory(),
+                key_resolver=_resolve_private_key,
+            )
+            engine = CopyTradingEngine(
+                service=service,
                 info_client=info_client,
                 ws_manager=ws_manager,
-                private_key_resolver=_resolve_private_key,
             )
             loop = asyncio.get_running_loop()
             engine.start(loop)

@@ -22,8 +22,9 @@ _cache_factory = RedisCacheServiceFactory(settings.REDIS_URL)
 async def lifespan(app: FastAPI):
     cache = _cache_factory.create()
     FastAPICache.init(RedisBackend(cache.client), prefix="contraflow:")
-    async with AsyncSessionFactory() as session:
-        await run_seed(session)
+    if settings.SEED_ON_STARTUP:
+        async with AsyncSessionFactory() as session:
+            await run_seed(session)
     yield
     await cache.close()
 

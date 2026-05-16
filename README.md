@@ -29,8 +29,9 @@ src/
 │
 ├── application/      # Use case'ler ve orkestrasyon
 │   ├── use_cases/        # RegisterUser, LoginUser, CreateAPIKey, RevokeAPIKey
-│   ├── dtos/
-│   └── services/
+│   ├── services/         # CopyTradingService (fill işleme orkestratörü)
+│   ├── ports/            # IPasswordHasher, ITokenService (infrastructure port'ları)
+│   └── dtos/
 │
 ├── infrastructure/   # Teknik implementasyonlar
 │   ├── database/
@@ -40,13 +41,16 @@ src/
 │   ├── cache/
 │   │   ├── redis_cache.py    # RedisCacheService (ICacheService impl.)
 │   │   └── factory.py        # RedisCacheServiceFactory
+│   ├── security/         # Port implementasyonları
+│   │   ├── bcrypt_hasher.py  # BcryptPasswordHasher (IPasswordHasher impl.)
+│   │   └── jwt_service.py    # JWTService (ITokenService impl.)
 │   ├── hyperliquid/      # Hyperliquid SDK entegrasyonu
 │   │   ├── client.py             # Info client (market data, WS)
 │   │   ├── exchange_client.py    # Exchange client (order imzalama, IExchangeClient impl.)
 │   │   ├── exchange_client_factory.py  # HyperliquidExchangeClientFactory
 │   │   ├── ws_manager.py         # WebSocket abonelik yöneticisi
 │   │   └── copy_trading/
-│   │       └── engine.py         # Copy trading motoru
+│   │       └── engine.py         # WS adapter — iş mantığını CopyTradingService'e devreder
 │   └── tasks/            # Celery worker'ları
 │       └── workers/
 │           ├── hl_sync.py        # Asset & fill senkronizasyonu
@@ -55,7 +59,7 @@ src/
 └── interfaces/       # Dış dünyayla temas noktaları
     ├── api/v1/
     │   ├── routers/      # FastAPI router'ları
-    │   ├── dependencies/ # DI: auth, JWT, password
+    │   ├── dependencies/ # DI: auth, composition root (use case wiring)
     │   └── middleware/   # Logging, CORS
     └── schemas/          # Pydantic request/response
 ```
@@ -163,7 +167,7 @@ Dış servis istemcileri doğrudan instantiate edilmez; domain'de tanımlı inte
 class SomeUseCase:
     def __init__(self, cache: ICacheService, exchange_factory: IExchangeClientFactory): ...
 
-# Composition root (main.py / DI container) — sadece burada concrete tipler
+# Composition root (dependencies/composition.py) — sadece burada concrete tipler
 cache = RedisCacheServiceFactory(settings.REDIS_URL).create()
 exchange_factory = HyperliquidExchangeClientFactory()
 ```
@@ -178,20 +182,24 @@ exchange_factory = HyperliquidExchangeClientFactory()
 | Order yönetimi | `HyperliquidExchangeClient` | Limit/market order açma, iptal, pozisyon kapatma, agent approve (`IExchangeClient` impl.) |
 | Exchange factory | `HyperliquidExchangeClientFactory` | Per-wallet exchange client üretir (`IExchangeClientFactory` impl.) |
 | WebSocket | `HyperliquidWSManager` | `userFills`, `allMids`, `orderUpdates` aboneliklerini yönetir |
-| Copy trading | `CopyTradingEngine` | Target wallet filllerini dinler, strateji kurallarını uygular, emir açar |
+| Copy trading (adapter) | `CopyTradingEngine` | WS olaylarını dinler, ham fill verisini `CopyTradingService`'e devreder |
+| Copy trading (orkestrasyon) | `CopyTradingService` | Strateji kurallarını uygular, emir açar, order'ı DB'ye yazar |
 
 ### Copy Trading Akışı
 
 ```
 Target wallet fill (WebSocket)
-  → CopyStrategy listesi sorgulanır
-  → Her strateji için:
-      1. CrossAssetTrigger kontrol edilir (ref asset fiyatı eşiği aştıysa pozisyon kapatılır)
-      2. Direction uygulanır  — FORWARD: aynı yön, REVERSE: ters yön
-      3. Boyut hesaplanır    — sz × copy_ratio
-      4. Fiyat hesaplanır    — limit_px × (1 ± markup_pct%)
-      5. Kullanıcı cüzdanında limit order açılır
-      6. Order & fill DB'ye kaydedilir
+  → CopyTradingEngine (WS adapter) raw fill'i alır
+  → CopyTradingService.process_fill() çağrılır
+      → CopyStrategy listesi sorgulanır
+      → Her strateji için:
+          1. CrossAssetTrigger.is_fired() kontrol edilir (ref asset fiyatı eşiği aştıysa pozisyon kapatılır)
+          2. CopyStrategy.compute_order() ile emir parametreleri hesaplanır:
+             - Direction  — FORWARD: aynı yön, REVERSE: ters yön
+             - Boyut      — sz × copy_ratio
+             - Fiyat      — limit_px × (1 ± markup_pct%)
+          3. Kullanıcı cüzdanında limit order açılır
+          4. Order DB'ye kaydedilir
 ```
 
 ### Celery Task'ları
@@ -221,6 +229,14 @@ Production'da bunu Vault veya AWS Secrets Manager gibi bir backend ile değişti
 |-------|--------------------------|---------|
 | development / docker / staging / test | `true` | `api.hyperliquid-testnet.xyz` |
 | production | `false` | `api.hyperliquid.xyz` |
+
+### Seed Davranışı
+
+Uygulama başlangıcında varsayılan rol ve izinler otomatik olarak seed edilir. Production ortamında devre dışı bırakmak için:
+
+```
+SEED_ON_STARTUP=false
+```
 
 ## Ortam Yapılandırması
 
@@ -359,5 +375,6 @@ curl http://localhost:8000/api/v1/auth/me \
 2. `src/domain/repositories/` → soyut interface
 3. `src/application/use_cases/` → use case sınıfı
 4. `src/infrastructure/database/` → model + concrete repo
-5. `src/interfaces/api/v1/routers/` → router
-6. `alembic revision --autogenerate` → migration
+5. `src/interfaces/api/v1/dependencies/composition.py` → use case factory fonksiyonu (`get_xxx_use_case`)
+6. `src/interfaces/api/v1/routers/` → router (`Depends(get_xxx_use_case)` ile inject et)
+7. `alembic revision --autogenerate` → migration

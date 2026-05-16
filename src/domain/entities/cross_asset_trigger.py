@@ -13,3 +13,8 @@ class CrossAssetTrigger:
     threshold_px: Decimal  # trigger price
     close_pct: Decimal  # percentage of position to close (e.g. 20 = 20%)
     id: int | None = None
+
+    def is_fired(self, current_px: Decimal) -> bool:
+        if self.operator == Operator.GT:
+            return current_px > self.threshold_px
+        return current_px < self.threshold_px
