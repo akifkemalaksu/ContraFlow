@@ -9,6 +9,7 @@ from alembic import context
 
 from src.config import settings
 from src.infrastructure.database.session import Base
+import src.infrastructure.database.models.permission_model  # noqa: F401
 import src.infrastructure.database.models.role_model  # noqa: F401
 import src.infrastructure.database.models.user_model  # noqa: F401
 import src.infrastructure.database.models.api_key_model  # noqa: F401

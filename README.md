@@ -21,7 +21,7 @@ FastAPI tabanlı, Domain-Driven Design (DDD) mimarisiyle inşa edilmiş Python m
 ```
 src/
 ├── domain/           # Saf iş mantığı — dışa bağımlılık yok
-│   ├── entities/         # User, Role, Account, Asset, Order, Fill, CopyStrategy, CrossAssetTrigger
+│   ├── entities/         # User, Role, Permission, Account, Asset, Order, Fill, CopyStrategy, CrossAssetTrigger
 │   ├── value_objects/    # APIKey
 │   ├── events/
 │   ├── services/         # Soyut servis interface'leri (IExchangeClient, IExchangeClientFactory, ICacheService, ICacheServiceFactory)
@@ -63,14 +63,21 @@ src/
 ## Veritabanı Şeması
 
 ```
-users               roles           user_roles (n:n)
-──────────────      ──────────      ────────────────
-id (PK, UUID)       id (PK)         user_id (FK → users)
-email               name            role_id (FK → roles)
+users               roles               user_roles (n:n)
+──────────────      ──────────────      ──────────────────────
+id (PK, UUID)       id (PK)             user_id (FK → users)
+email               name (unique)       role_id (FK → roles)
 hashed_password     description
 is_active           created_at
 created_at
 updated_at
+
+permissions                     role_permissions (n:n)
+────────────────────            ──────────────────────────
+id (PK, UUID)                   role_id (FK → roles)
+name (unique)                   permission_id (FK → permissions)
+description
+created_at
 
 api_keys                        accounts
 ────────────────────────        ────────────────────────────────
