@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String
+from sqlalchemy import BigInteger, Boolean, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,9 @@ class AccountModel(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     agent_address: Mapped[str | None] = mapped_column(String(42), nullable=True)
+    encrypted_agent_private_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    encryption_iv: Mapped[str | None] = mapped_column(String, nullable=True)
+    last_nonce: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
     account_type: Mapped[AccountType] = mapped_column(
         Enum(AccountType, name="account_type"), nullable=False
     )
