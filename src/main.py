@@ -7,19 +7,21 @@ from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 
 from src.config import settings
-from src.infrastructure.cache.redis import close_redis, get_redis
+from src.infrastructure.cache.factory import RedisCacheServiceFactory
 from src.interfaces.api.middleware.logging import LoggingMiddleware
 from src.interfaces.api.v1.routers import auth, api_keys, health
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 
+_cache_factory = RedisCacheServiceFactory(settings.REDIS_URL)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    redis = await get_redis()
-    FastAPICache.init(RedisBackend(redis), prefix="contraflow:")
+    cache = _cache_factory.create()
+    FastAPICache.init(RedisBackend(cache.client), prefix="contraflow:")
     yield
-    await close_redis()
+    await cache.close()
 
 
 def create_app() -> FastAPI:

@@ -13,8 +13,8 @@ from src.domain.repositories.copy_strategy_repository import ICopyStrategyReposi
 from src.domain.repositories.cross_asset_trigger_repository import ICrossAssetTriggerRepository
 from src.domain.repositories.fill_repository import IFillRepository
 from src.domain.repositories.order_repository import IOrderRepository
+from src.domain.services.exchange_client import IExchangeClientFactory
 from src.infrastructure.hyperliquid.client import HyperliquidInfoClient
-from src.infrastructure.hyperliquid.exchange_client import HyperliquidExchangeClient
 from src.infrastructure.hyperliquid.ws_manager import HyperliquidWSManager
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,7 @@ class CopyTradingEngine:
         info_client: HyperliquidInfoClient,
         ws_manager: HyperliquidWSManager,
         private_key_resolver: Callable[[str], str | None],
+        exchange_factory: IExchangeClientFactory,
     ):
         self._strategy_repo = strategy_repo
         self._order_repo = order_repo
@@ -44,6 +45,7 @@ class CopyTradingEngine:
         self._ws = ws_manager
         # resolver maps user_wallet address → private key (fetched from secrets manager)
         self._resolve_key = private_key_resolver
+        self._exchange_factory = exchange_factory
         self._loop: asyncio.AbstractEventLoop | None = None
         self._mid_prices: dict[str, Decimal] = {}
 
@@ -127,7 +129,7 @@ class CopyTradingEngine:
         # Check cross-asset triggers before placing the order
         await self._check_triggers(strategy, private_key)
 
-        exchange = HyperliquidExchangeClient(private_key, account_address=strategy.user_wallet)
+        exchange = self._exchange_factory.create(private_key, account_address=strategy.user_wallet)
         try:
             result = await exchange.place_limit_order(coin, is_buy, sz, limit_px)
         except Exception:
@@ -188,7 +190,7 @@ class CopyTradingEngine:
             "CrossAssetTrigger %s fired: %s %s %s (current=%s) — closing %s%% of position",
             trigger.id, ref_symbol, trigger.operator, trigger.threshold_px, current_px, trigger.close_pct,
         )
-        exchange = HyperliquidExchangeClient(private_key, account_address=strategy.user_wallet)
+        exchange = self._exchange_factory.create(private_key, account_address=strategy.user_wallet)
         symbol = self._asset_id_to_symbol(
             self._info._info.coin_to_asset.get(strategy.target_wallet, trigger.ref_asset_id)
         )

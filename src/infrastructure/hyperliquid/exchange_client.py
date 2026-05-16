@@ -6,9 +6,10 @@ from eth_account.signers.local import LocalAccount
 from hyperliquid.exchange import Exchange
 
 from src.config import settings
+from src.domain.services.exchange_client import IExchangeClient
 
 
-class HyperliquidExchangeClient:
+class HyperliquidExchangeClient(IExchangeClient):
     """Per-wallet exchange client. Private key must be provided by the caller.
 
     The key is kept only for the lifetime of this object and never persisted here.

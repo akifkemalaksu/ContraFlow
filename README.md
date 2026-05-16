@@ -24,7 +24,8 @@ src/
 │   ├── entities/         # User, Role, Account, Asset, Order, Fill, CopyStrategy, CrossAssetTrigger
 │   ├── value_objects/    # APIKey
 │   ├── events/
-│   └── repositories/     # Soyut interface'ler (ABC)
+│   ├── services/         # Soyut servis interface'leri (IExchangeClient, IExchangeClientFactory, ICacheService, ICacheServiceFactory)
+│   └── repositories/     # Soyut repository interface'leri (ABC)
 │
 ├── application/      # Use case'ler ve orkestrasyon
 │   ├── use_cases/        # RegisterUser, LoginUser, CreateAPIKey, RevokeAPIKey
@@ -36,13 +37,16 @@ src/
 │   │   ├── models/       # SQLAlchemy ORM modelleri
 │   │   ├── repositories/ # Concrete repo impl.
 │   │   └── session.py    # Async engine + session factory
-│   ├── cache/            # Redis bağlantısı
+│   ├── cache/
+│   │   ├── redis_cache.py    # RedisCacheService (ICacheService impl.)
+│   │   └── factory.py        # RedisCacheServiceFactory
 │   ├── hyperliquid/      # Hyperliquid SDK entegrasyonu
-│   │   ├── client.py         # Info client (market data, WS)
-│   │   ├── exchange_client.py# Exchange client (order imzalama)
-│   │   ├── ws_manager.py     # WebSocket abonelik yöneticisi
+│   │   ├── client.py             # Info client (market data, WS)
+│   │   ├── exchange_client.py    # Exchange client (order imzalama, IExchangeClient impl.)
+│   │   ├── exchange_client_factory.py  # HyperliquidExchangeClientFactory
+│   │   ├── ws_manager.py         # WebSocket abonelik yöneticisi
 │   │   └── copy_trading/
-│   │       └── engine.py     # Copy trading motoru
+│   │       └── engine.py         # Copy trading motoru
 │   └── tasks/            # Celery worker'ları
 │       └── workers/
 │           ├── hl_sync.py        # Asset & fill senkronizasyonu
@@ -133,6 +137,30 @@ timestamp (ms epoch)
 | `GET` | `/health` | Sağlık kontrolü |
 | `GET` | `/docs` | OpenAPI (development/test) |
 
+## Factory Pattern
+
+Dış servis istemcileri doğrudan instantiate edilmez; domain'de tanımlı interface ve factory sözleşmeleri üzerinden bağlanır.
+
+| Interface | Factory Interface | Concrete Factory | Concrete Implementation |
+|-----------|------------------|-----------------|------------------------|
+| `IExchangeClient` | `IExchangeClientFactory` | `HyperliquidExchangeClientFactory` | `HyperliquidExchangeClient` |
+| `ICacheService` | `ICacheServiceFactory` | `RedisCacheServiceFactory` | `RedisCacheService` |
+
+**Avantajlar:**
+- `CopyTradingEngine` Hyperliquid SDK'ya doğrudan bağımlı değildir — test ortamında `IExchangeClientFactory` mock'lanabilir
+- Cache katmanı değiştirilebilir (örn. in-memory, Memcached) — uygulama kodu `ICacheService` ile çalışır
+- Farklı exchange backend'leri aynı `IExchangeClient` sözleşmesini implement ederek sisteme eklenebilir
+
+```python
+# Use case / servis içinde — concrete tipe bağımlılık yok
+class SomeUseCase:
+    def __init__(self, cache: ICacheService, exchange_factory: IExchangeClientFactory): ...
+
+# Composition root (main.py / DI container) — sadece burada concrete tipler
+cache = RedisCacheServiceFactory(settings.REDIS_URL).create()
+exchange_factory = HyperliquidExchangeClientFactory()
+```
+
 ## Hyperliquid Entegrasyonu
 
 ### Bileşenler
@@ -140,7 +168,8 @@ timestamp (ms epoch)
 | Bileşen | Sınıf | Açıklama |
 |---------|-------|----------|
 | Market data | `HyperliquidInfoClient` | Asset listesi, mid fiyatlar, order book, fill ve open order sorgulama |
-| Order yönetimi | `HyperliquidExchangeClient` | Limit/market order açma, iptal, pozisyon kapatma, agent approve |
+| Order yönetimi | `HyperliquidExchangeClient` | Limit/market order açma, iptal, pozisyon kapatma, agent approve (`IExchangeClient` impl.) |
+| Exchange factory | `HyperliquidExchangeClientFactory` | Per-wallet exchange client üretir (`IExchangeClientFactory` impl.) |
 | WebSocket | `HyperliquidWSManager` | `userFills`, `allMids`, `orderUpdates` aboneliklerini yönetir |
 | Copy trading | `CopyTradingEngine` | Target wallet filllerini dinler, strateji kurallarını uygular, emir açar |
 
