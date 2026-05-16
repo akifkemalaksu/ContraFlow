@@ -78,6 +78,13 @@ class HyperliquidInfoClient:
             ))
         return orders
 
+    @property
+    def coin_to_asset(self) -> dict[str, int]:
+        return self._info.coin_to_asset
+
+    def build_symbol_map(self) -> dict[int, str]:
+        return {aid: coin for coin, aid in self._info.coin_to_asset.items()}
+
     async def get_user_state(self, address: str) -> dict:
         return await asyncio.to_thread(self._info.user_state, address)
 

@@ -33,7 +33,7 @@ class CopyTradingEngine:
 
     def start(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._symbol_map = {aid: coin for coin, aid in self._info._info.coin_to_asset.items()}
+        self._symbol_map = self._info.build_symbol_map()
         self._ws.subscribe_all_mids(self._on_mids_update)
         logger.info("CopyTradingEngine started")
 
@@ -69,7 +69,7 @@ class CopyTradingEngine:
                         target_px=Decimal(str(raw_fill["px"])),
                         target_sz=Decimal(str(raw_fill["sz"])),
                         target_oid=raw_fill["oid"],
-                        asset_id=self._info._info.coin_to_asset.get(coin, -1),
+                        asset_id=self._info.coin_to_asset.get(coin, -1),
                         mid_prices=self._mid_prices,
                         symbol_map=self._symbol_map,
                     ),
