@@ -31,6 +31,19 @@ async def scope_client():
 
 
 @pytest.mark.asyncio
+async def test_list_api_keys(client: AsyncClient):
+    token = await _get_token(client, "_list")
+    auth_headers = {"Authorization": f"Bearer {token}"}
+
+    await client.post("/api/v1/api-keys/", json={"scopes": ["read"]}, headers=auth_headers)
+    await client.post("/api/v1/api-keys/", json={"scopes": ["write"]}, headers=auth_headers)
+
+    r = await client.get("/api/v1/api-keys/", headers=auth_headers)
+    assert r.status_code == 200
+    assert len(r.json()) >= 2
+
+
+@pytest.mark.asyncio
 async def test_create_and_use_api_key(client: AsyncClient):
     token = await _get_token(client)
     auth_headers = {"Authorization": f"Bearer {token}"}
