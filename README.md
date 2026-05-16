@@ -369,6 +369,27 @@ curl http://localhost:8000/api/v1/auth/me \
 
 > API Key yalnızca oluşturulduğu anda `raw_key` olarak döner, tekrar görüntülenemez.
 
+### Auth Dependency'leri
+
+`src/interfaces/api/v1/dependencies/auth.py` dört bağımsız dependency sunar:
+
+| Dependency | Kabul edilen auth | Notlar |
+|---|---|---|
+| `require_jwt_user` | Yalnızca JWT | `/api-keys/` rotaları bu dependency'yi kullanır |
+| `require_api_key_user` | Yalnızca API Key | `expires_at` ve `is_active` kontrolü yapar |
+| `require_auth_either` | JWT **veya** API Key | `/auth/me` bu dependency'yi kullanır |
+| `require_api_key_scopes(["write"])` | API Key + scope kontrolü | Eksik scope → 403 Forbidden |
+
+`require_api_key_scopes` bir factory fonksiyonudur; `Depends` döndürür ve doğrudan route parametresi olarak kullanılır:
+
+```python
+@router.get("/protected")
+async def endpoint(user: User = require_api_key_scopes(["write"])):
+    ...
+```
+
+API key doğrulamasında `expires_at` (varsa) UTC'ye göre kontrol edilir; süresi dolmuş key → 401.
+
 ## Yeni Bir Use Case Eklemek
 
 1. `src/domain/entities/` → gerekirse yeni entity

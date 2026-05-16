@@ -8,7 +8,7 @@ from src.application.use_cases.manage_api_keys import CreateAPIKeyUseCase, Revok
 from src.domain.entities.user import User
 from src.infrastructure.database.repositories.api_key_repository import APIKeyRepository
 from src.infrastructure.database.session import get_db_session
-from src.interfaces.api.v1.dependencies.auth import get_current_user
+from src.interfaces.api.v1.dependencies.auth import require_jwt_user
 from src.interfaces.api.v1.dependencies.composition import (
     get_api_key_repo,
     get_create_api_key_use_case,
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 @router.post("/", response_model=APIKeyCreatedResponse, status_code=status.HTTP_201_CREATED)
 async def create_api_key(
     body: APIKeyCreateRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_jwt_user),
     use_case: CreateAPIKeyUseCase = Depends(get_create_api_key_use_case),
     session: AsyncSession = Depends(get_db_session),
 ):
@@ -47,7 +47,7 @@ async def create_api_key(
 
 @router.get("/", response_model=list[APIKeyResponse])
 async def list_api_keys(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_jwt_user),
     api_key_repo: APIKeyRepository = Depends(get_api_key_repo),
 ):
     keys = await api_key_repo.list_by_owner(current_user.id)
@@ -66,7 +66,7 @@ async def list_api_keys(
 @router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_api_key(
     key_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_jwt_user),
     use_case: RevokeAPIKeyUseCase = Depends(get_revoke_api_key_use_case),
     session: AsyncSession = Depends(get_db_session),
 ):
