@@ -8,8 +8,7 @@ celery_app = Celery(
     backend=settings.celery_result_backend,
     include=[
         "src.infrastructure.tasks.workers.example",
-        "src.infrastructure.tasks.workers.hl_sync",
-        "src.infrastructure.tasks.workers.copy_trading",
+        "src.infrastructure.tasks.workers.sync_assets",
     ],
 )
 
