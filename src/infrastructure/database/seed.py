@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import src.infrastructure.database.models  # noqa: F401 — ensures all mappers are registered
 from src.infrastructure.database.models.permission_model import PermissionModel
 from src.infrastructure.database.models.role_model import RoleModel
+from src.infrastructure.database.models.user_model import UserModel
+from src.infrastructure.security.bcrypt_hasher import BcryptPasswordHasher
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +37,15 @@ _DEFAULT_ROLES: list[tuple[str, str, list[str]]] = [
     ),
 ]
 
+_DEFAULT_USERS: list[tuple[str, str, str]] = [
+    ("developer@contraflow.local", "dev123123", "admin"),
+]
+
 
 async def run_seed(session: AsyncSession) -> None:
     async with session.begin():
         existing_roles = (await session.execute(select(RoleModel))).scalars().all()
         existing_permissions = (await session.execute(select(PermissionModel))).scalars().all()
-
-        if existing_roles and existing_permissions:
-            logger.info("Seed skipped: roles and permissions already exist")
-            return
-
         now = datetime.now(UTC)
 
         permission_map: dict[str, PermissionModel] = {p.name: p for p in existing_permissions}
@@ -64,4 +65,28 @@ async def run_seed(session: AsyncSession) -> None:
                 session.add(role)
                 role_map[role_name] = role
 
-        logger.info("Seed completed: default roles and permissions inserted")
+        await session.flush()
+
+        hasher = BcryptPasswordHasher()
+        existing_emails = {
+            email
+            for (email,) in (
+                await session.execute(select(UserModel.email).where(UserModel.email.in_([u[0] for u in _DEFAULT_USERS])))
+            ).all()
+        }
+        for email, password, role_name in _DEFAULT_USERS:
+            if email not in existing_emails:
+                user = UserModel(
+                    id=uuid.uuid4(),
+                    email=email,
+                    hashed_password=hasher.hash(password),
+                    is_active=True,
+                    created_at=now,
+                    updated_at=now,
+                )
+                if role_name in role_map:
+                    user.roles = [role_map[role_name]]
+                session.add(user)
+                logger.info("Seed: created user %s", email)
+
+        logger.info("Seed completed: default roles, permissions, and users inserted")

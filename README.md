@@ -232,7 +232,15 @@ Production'da bunu Vault veya AWS Secrets Manager gibi bir backend ile değişti
 
 ### Seed Davranışı
 
-Uygulama başlangıcında varsayılan rol ve izinler otomatik olarak seed edilir. Production ortamında devre dışı bırakmak için:
+Uygulama başlangıcında varsayılan rol, izin ve kullanıcılar otomatik olarak seed edilir.
+
+| Alan | Değer |
+|------|-------|
+| Email | `developer@contraflow.local` |
+| Şifre | `dev123123` |
+| Rol | `admin` |
+
+Production ortamında devre dışı bırakmak için:
 
 ```
 SEED_ON_STARTUP=false
