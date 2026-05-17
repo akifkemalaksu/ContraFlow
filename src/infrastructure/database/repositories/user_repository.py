@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.domain.entities.permission import Permission
 from src.domain.entities.role import Role
 from src.domain.entities.user import User
 from src.domain.repositories.user_repository import IUserRepository
@@ -16,6 +17,7 @@ def _role_to_domain(model: RoleModel) -> Role:
         id=model.id,
         name=model.name,
         description=model.description,
+        permissions=[Permission(id=p.id, name=p.name, description=p.description, created_at=p.created_at) for p in model.permissions],
         created_at=model.created_at,
     )
 

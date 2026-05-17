@@ -107,6 +107,19 @@ async def require_auth_either(
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
 
+def require_permission(permission: str):
+    async def _dependency(user: User = Depends(require_jwt_user)) -> User:
+        for role in user.roles:
+            if any(p.name == permission for p in role.permissions):
+                return user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Missing required permission: {permission}",
+        )
+
+    return Depends(_dependency)
+
+
 def require_api_key_scopes(required_scopes: list[str]):
     async def _dependency(
         raw_key: str | None = Security(_api_key_header),

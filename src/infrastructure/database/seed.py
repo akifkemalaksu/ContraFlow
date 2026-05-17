@@ -20,6 +20,7 @@ _DEFAULT_PERMISSIONS: list[tuple[str, str]] = [
     ("roles:read", "View roles and permissions"),
     ("roles:write", "Create and update roles"),
     ("api_keys:manage", "Create, revoke and list API keys"),
+    ("accounts:write", "Add and manage own trading accounts"),
     ("trading:read", "View trading accounts and positions"),
     ("trading:write", "Place and cancel orders"),
 ]
@@ -33,7 +34,7 @@ _DEFAULT_ROLES: list[tuple[str, str, list[str]]] = [
     (
         "user",
         "Standard authenticated user",
-        ["users:read", "api_keys:manage", "trading:read", "trading:write"],
+        ["users:read", "api_keys:manage", "accounts:write", "trading:read", "trading:write"],
     ),
 ]
 

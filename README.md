@@ -142,6 +142,11 @@ timestamp (ms epoch)
 | `GET`    | `/api/v1/api-keys/` | JWT | Key listesi |
 | `DELETE` | `/api/v1/api-keys/{id}` | JWT | Key iptal et |
 
+### Accounts
+| Method | Path | Auth | Permission | Açıklama |
+|--------|------|------|------------|----------|
+| `POST` | `/api/v1/accounts/wallets` | JWT | `accounts:write` | Kendi master wallet'ını ekle |
+
 ### Sistem
 | Method | Path | Açıklama |
 |--------|------|----------|
@@ -379,7 +384,7 @@ curl http://localhost:8000/api/v1/auth/me \
 
 ### Auth Dependency'leri
 
-`src/interfaces/api/v1/dependencies/auth.py` dört bağımsız dependency sunar:
+`src/interfaces/api/v1/dependencies/auth.py` beş bağımsız dependency sunar:
 
 | Dependency | Kabul edilen auth | Notlar |
 |---|---|---|
@@ -387,6 +392,15 @@ curl http://localhost:8000/api/v1/auth/me \
 | `require_api_key_user` | Yalnızca API Key | `expires_at` ve `is_active` kontrolü yapar |
 | `require_auth_either` | JWT **veya** API Key | `/auth/me` bu dependency'yi kullanır |
 | `require_api_key_scopes(["write"])` | API Key + scope kontrolü | Eksik scope → 403 Forbidden |
+| `require_permission("accounts:write")` | JWT + role permission kontrolü | Kullanıcının rolünde permission yoksa → 403 Forbidden |
+
+`require_permission` bir factory fonksiyonudur; kullanıcının rollerine bağlı permission'ları tarar ve `Depends` döndürür:
+
+```python
+@router.post("/wallets")
+async def add_wallet(user: User = require_permission("accounts:write")):
+    ...
+```
 
 `require_api_key_scopes` bir factory fonksiyonudur; `Depends` döndürür ve doğrudan route parametresi olarak kullanılır:
 
