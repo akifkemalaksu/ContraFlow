@@ -5,11 +5,12 @@ from src.domain.enums import AccountType
 
 
 @dataclass
-class Account:
+class Wallet:
     user_id: UUID
     address: str  # PK, VARCHAR(42)
+    name: str
     account_type: AccountType
-    agent_address: str | None = None
+    master_wallet_address: str | None = None
     encrypted_agent_private_key: str | None = None
     encryption_iv: str | None = None
     last_nonce: int = 0

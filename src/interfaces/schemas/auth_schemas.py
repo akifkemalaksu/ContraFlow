@@ -31,19 +31,3 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-
-class APIKeyCreateRequest(BaseModel):
-    scopes: list[str] = []
-    expires_in_days: int | None = None
-
-
-class APIKeyResponse(BaseModel):
-    id: UUID
-    prefix: str
-    scopes: list[str]
-    expires_at: datetime | None
-    created_at: datetime
-
-
-class APIKeyCreatedResponse(APIKeyResponse):
-    raw_key: str  # Yalnızca oluşturma anında döner

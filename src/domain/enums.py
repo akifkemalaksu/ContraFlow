@@ -3,8 +3,7 @@ from enum import Enum
 
 class AccountType(str, Enum):
     MASTER = "master"
-    SUB_ACCOUNT = "sub_account"
-    VAULT = "vault"
+    AGENT = "agent"
 
 
 class Direction(str, Enum):

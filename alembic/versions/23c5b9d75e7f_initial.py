@@ -1,8 +1,8 @@
-"""add encrypted_agent_private_key, encryption_iv, last_nonce to accounts
+"""initial
 
-Revision ID: 59cb2fdcde6b
-Revises: 8827fb96b216
-Create Date: 2026-05-17 00:26:07.922859
+Revision ID: 23c5b9d75e7f
+Revises: 
+Create Date: 2026-05-18 22:27:36.688046
 
 """
 from typing import Sequence, Union
@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = '59cb2fdcde6b'
-down_revision: Union[str, None] = '8827fb96b216'
+revision: str = '23c5b9d75e7f'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -35,19 +35,24 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_permissions_name'), 'permissions', ['name'], unique=True)
-    op.create_table('accounts',
-    sa.Column('address', sa.String(length=42), nullable=False),
-    sa.Column('user_id', sa.UUID(), nullable=False),
-    sa.Column('agent_address', sa.String(length=42), nullable=True),
-    sa.Column('encrypted_agent_private_key', sa.Text(), nullable=True),
-    sa.Column('encryption_iv', sa.String(), nullable=True),
-    sa.Column('last_nonce', sa.BigInteger(), nullable=False),
-    sa.Column('account_type', sa.Enum('MASTER', 'SUB_ACCOUNT', 'VAULT', name='account_type'), nullable=False),
-    sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('address')
+    op.create_table('roles',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(length=100), nullable=False),
+    sa.Column('description', sa.String(length=255), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_accounts_user_id'), 'accounts', ['user_id'], unique=False)
+    op.create_index(op.f('ix_roles_name'), 'roles', ['name'], unique=True)
+    op.create_table('users',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('hashed_password', sa.String(length=255), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_table('role_permissions',
     sa.Column('role_id', sa.UUID(), nullable=False),
     sa.Column('permission_id', sa.UUID(), nullable=False),
@@ -55,6 +60,28 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('role_id', 'permission_id')
     )
+    op.create_table('user_roles',
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('role_id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('user_id', 'role_id')
+    )
+    op.create_table('wallets',
+    sa.Column('address', sa.String(length=42), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('name', sa.String(length=100), nullable=False),
+    sa.Column('master_wallet_address', sa.String(length=42), nullable=True),
+    sa.Column('encrypted_agent_private_key', sa.Text(), nullable=True),
+    sa.Column('encryption_iv', sa.String(), nullable=True),
+    sa.Column('last_nonce', sa.BigInteger(), nullable=False),
+    sa.Column('account_type', sa.Enum('MASTER', 'AGENT', name='account_type'), nullable=False),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['master_wallet_address'], ['wallets.address'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('address')
+    )
+    op.create_index(op.f('ix_wallets_user_id'), 'wallets', ['user_id'], unique=False)
     op.create_table('copy_strategies',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_wallet', sa.String(length=42), nullable=False),
@@ -63,7 +90,7 @@ def upgrade() -> None:
     sa.Column('copy_ratio', sa.Numeric(precision=18, scale=8), nullable=False),
     sa.Column('markup_pct', sa.Numeric(precision=18, scale=8), nullable=False),
     sa.Column('pnl_control_enabled', sa.Boolean(), nullable=False),
-    sa.ForeignKeyConstraint(['user_wallet'], ['accounts.address'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_wallet'], ['wallets.address'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_copy_strategies_target_wallet'), 'copy_strategies', ['target_wallet'], unique=False)
@@ -90,7 +117,7 @@ def upgrade() -> None:
     sa.Column('sz', sa.Numeric(precision=18, scale=8), nullable=False),
     sa.Column('status', sa.Enum('OPEN', 'FILLED', 'CANCELED', 'REJECTED', name='order_status'), nullable=False),
     sa.ForeignKeyConstraint(['asset_id'], ['assets.asset_id'], ),
-    sa.ForeignKeyConstraint(['owner_address'], ['accounts.address'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['owner_address'], ['wallets.address'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['strategy_id'], ['copy_strategies.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('oid')
     )
@@ -105,7 +132,7 @@ def upgrade() -> None:
     sa.Column('sz', sa.Numeric(precision=18, scale=8), nullable=False),
     sa.Column('timestamp', sa.BigInteger(), nullable=False),
     sa.ForeignKeyConstraint(['oid'], ['orders.oid'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['owner_address'], ['accounts.address'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['owner_address'], ['wallets.address'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('fill_id')
     )
     op.create_index(op.f('ix_fills_oid'), 'fills', ['oid'], unique=False)
@@ -127,9 +154,14 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_copy_strategies_user_wallet'), table_name='copy_strategies')
     op.drop_index(op.f('ix_copy_strategies_target_wallet'), table_name='copy_strategies')
     op.drop_table('copy_strategies')
+    op.drop_index(op.f('ix_wallets_user_id'), table_name='wallets')
+    op.drop_table('wallets')
+    op.drop_table('user_roles')
     op.drop_table('role_permissions')
-    op.drop_index(op.f('ix_accounts_user_id'), table_name='accounts')
-    op.drop_table('accounts')
+    op.drop_index(op.f('ix_users_email'), table_name='users')
+    op.drop_table('users')
+    op.drop_index(op.f('ix_roles_name'), table_name='roles')
+    op.drop_table('roles')
     op.drop_index(op.f('ix_permissions_name'), table_name='permissions')
     op.drop_table('permissions')
     op.drop_index(op.f('ix_assets_symbol'), table_name='assets')

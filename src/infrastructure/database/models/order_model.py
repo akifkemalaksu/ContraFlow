@@ -10,7 +10,7 @@ class OrderModel(Base):
 
     oid: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=False)
     owner_address: Mapped[str] = mapped_column(
-        String(42), ForeignKey("accounts.address", ondelete="CASCADE"), nullable=False, index=True
+        String(42), ForeignKey("wallets.address", ondelete="CASCADE"), nullable=False, index=True
     )
     strategy_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("copy_strategies.id", ondelete="SET NULL"), nullable=True, index=True
@@ -25,8 +25,8 @@ class OrderModel(Base):
         Enum(OrderStatus, name="order_status"), nullable=False, default=OrderStatus.OPEN
     )
 
-    account: Mapped["AccountModel"] = relationship(  # noqa: F821
-        "AccountModel", foreign_keys=[owner_address], back_populates="orders"
+    wallet: Mapped["WalletModel"] = relationship(  # noqa: F821
+        "WalletModel", foreign_keys=[owner_address], back_populates="orders"
     )
     strategy: Mapped["CopyStrategyModel | None"] = relationship(  # noqa: F821
         "CopyStrategyModel", back_populates="orders"

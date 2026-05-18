@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # Wallet private key encryption (AES-256-GCM) — 64 hex chars (32 bytes)
+    WALLET_ENCRYPTION_KEY: str
+
     # API Key
     API_KEY_SECRET: str
     API_KEY_PREFIX_LENGTH: int = 8

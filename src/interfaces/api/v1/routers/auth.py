@@ -10,7 +10,7 @@ from src.domain.entities.user import User
 from src.infrastructure.database.repositories.user_repository import UserRepository
 from src.infrastructure.database.session import get_db_session
 from src.infrastructure.security.jwt_service import JWTService
-from src.interfaces.api.v1.dependencies.auth import require_auth_either
+from src.interfaces.api.v1.dependencies.auth import require_jwt_user
 from src.interfaces.api.v1.dependencies.composition import (
     get_login_use_case,
     get_register_use_case,
@@ -88,5 +88,5 @@ async def refresh(
 
 
 @router.get("/me", response_model=UserResponse)
-async def me(current_user: User = Depends(require_auth_either)):
+async def me(current_user: User = Depends(require_jwt_user)):
     return _user_response(current_user)

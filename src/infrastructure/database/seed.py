@@ -17,11 +17,9 @@ _DEFAULT_PERMISSIONS: list[tuple[str, str]] = [
     ("users:read", "View user profiles"),
     ("users:write", "Create and update users"),
     ("users:delete", "Delete users"),
-    ("roles:read", "View roles and permissions"),
-    ("roles:write", "Create and update roles"),
-    ("api_keys:manage", "Create, revoke and list API keys"),
-    ("accounts:write", "Add and manage own trading accounts"),
-    ("trading:read", "View trading accounts and positions"),
+    ("wallets:write", "Add and manage own trading wallets"),
+    ("wallets:read", "View trading wallets"),
+    ("trading:read", "View trading positions"),
     ("trading:write", "Place and cancel orders"),
 ]
 
@@ -34,12 +32,12 @@ _DEFAULT_ROLES: list[tuple[str, str, list[str]]] = [
     (
         "user",
         "Standard authenticated user",
-        ["users:read", "api_keys:manage", "accounts:write", "trading:read", "trading:write"],
+        ["users:read", "wallets:write", "wallets:read", "trading:read", "trading:write"],
     ),
 ]
 
 _DEFAULT_USERS: list[tuple[str, str, str]] = [
-    ("developer@contraflow.local", "dev123123", "admin"),
+    ("developer@mail.com", "dev123123", "admin"),
 ]
 
 

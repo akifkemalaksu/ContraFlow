@@ -6,7 +6,7 @@ from uuid import uuid4
 @dataclass
 class Fill:
     oid: int  # FK -> orders.oid
-    owner_address: str  # FK -> accounts.address
+    owner_address: str  # FK -> wallets.address
     px: Decimal  # executed price
     sz: Decimal  # executed size
     timestamp: int  # milliseconds epoch

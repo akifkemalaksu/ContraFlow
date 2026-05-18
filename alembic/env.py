@@ -12,8 +12,7 @@ from src.infrastructure.database.session import Base
 import src.infrastructure.database.models.permission_model  # noqa: F401
 import src.infrastructure.database.models.role_model  # noqa: F401
 import src.infrastructure.database.models.user_model  # noqa: F401
-import src.infrastructure.database.models.api_key_model  # noqa: F401
-import src.infrastructure.database.models.account_model  # noqa: F401
+import src.infrastructure.database.models.wallet_model  # noqa: F401
 import src.infrastructure.database.models.asset_model  # noqa: F401
 import src.infrastructure.database.models.copy_strategy_model  # noqa: F401
 import src.infrastructure.database.models.cross_asset_trigger_model  # noqa: F401

@@ -6,7 +6,7 @@ from src.domain.enums import Direction
 
 @dataclass
 class CopyStrategy:
-    user_wallet: str  # FK -> accounts.address
+    user_wallet: str  # FK -> wallets.address
     target_wallet: str
     direction: Direction
     copy_ratio: Decimal

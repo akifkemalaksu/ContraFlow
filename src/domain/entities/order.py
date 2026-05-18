@@ -8,7 +8,7 @@ from src.domain.enums import OrderStatus
 @dataclass
 class Order:
     oid: int  # PK BIGINT, assigned by Hyperliquid
-    owner_address: str  # FK -> accounts.address
+    owner_address: str  # FK -> wallets.address
     asset_id: int  # FK -> assets.asset_id
     is_buy: bool
     limit_px: Decimal
