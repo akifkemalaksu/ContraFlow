@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.use_cases.add_master_wallet import AddMasterWalletDTO, AddMasterWalletUseCase
+from src.application.use_cases.complete_agent_wallet import CompleteAgentWalletDTO, CompleteAgentWalletUseCase
 from src.application.use_cases.get_wallet_info import GetWalletInfoDTO, GetWalletInfoUseCase
 from src.application.use_cases.initiate_agent_wallet import InitiateAgentWalletDTO, InitiateAgentWalletUseCase
 from src.domain.entities.user import User
@@ -11,11 +12,14 @@ from src.infrastructure.database.session import get_db_session
 from src.interfaces.api.v1.dependencies.auth import require_permission
 from src.interfaces.api.v1.dependencies.composition import (
     get_add_master_wallet_use_case,
+    get_complete_agent_wallet_use_case,
     get_initiate_agent_wallet_use_case,
     get_wallet_info_use_case,
 )
 from src.interfaces.schemas.wallet_schemas import (
     AddMasterWalletRequest,
+    CompleteAgentWalletRequest,
+    CompleteAgentWalletResponse,
     EIP712Package,
     InitiateAgentWalletRequest,
     InitiateAgentWalletResponse,
@@ -73,6 +77,30 @@ async def initiate_agent_wallet(
             message=result.eip712.message,
         ),
     )
+
+
+@router.post("/{master_address}/agent/approve", response_model=CompleteAgentWalletResponse)
+async def complete_agent_wallet(
+    master_address: str,
+    body: CompleteAgentWalletRequest,
+    current_user: User = require_permission("wallets:write"),
+    use_case: CompleteAgentWalletUseCase = Depends(get_complete_agent_wallet_use_case),
+):
+    try:
+        result = await use_case.execute(
+            CompleteAgentWalletDTO(
+                master_wallet_address=master_address,
+                agent_address=body.agent_address,
+                nonce=body.nonce,
+                signature=body.signature,
+                user_id=current_user.id,
+            )
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return CompleteAgentWalletResponse(status=result.status, response=result.response)
 
 
 @router.get("/{address}/info", response_model=WalletInfoResponse)

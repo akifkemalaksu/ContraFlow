@@ -9,6 +9,17 @@ class InitiateAgentWalletRequest(BaseModel):
     agent_name: str
 
 
+class CompleteAgentWalletRequest(BaseModel):
+    agent_address: str
+    nonce: int
+    signature: str  # 0x-prefixed 65-byte hex from eth_signTypedData_v4
+
+
+class CompleteAgentWalletResponse(BaseModel):
+    status: str
+    response: dict
+
+
 class EIP712Package(BaseModel):
     domain: dict
     types: dict
