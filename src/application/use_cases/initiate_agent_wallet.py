@@ -7,6 +7,7 @@ import eth_account
 
 from src.config import settings
 from src.domain.entities.wallet import Wallet
+from src.infrastructure.hyperliquid.signing_helpers import build_approve_agent_eip712
 from src.domain.enums import AccountType
 from src.domain.repositories.wallet_repository import IWalletRepository
 from src.domain.services.key_encryptor import IKeyEncryptor
@@ -33,22 +34,6 @@ class InitiateAgentWalletResult:
     signer_address: str  # master wallet — UI enforces signing with this account
     eip712: EIP712Package
 
-
-_APPROVE_AGENT_TYPES = [
-    {"name": "hyperliquidChain", "type": "string"},
-    {"name": "agentAddress", "type": "address"},
-    {"name": "agentName", "type": "string"},
-    {"name": "nonce", "type": "uint256"},
-]
-
-_EIP712_DOMAIN_TYPES = [
-    {"name": "name", "type": "string"},
-    {"name": "version", "type": "string"},
-    {"name": "chainId", "type": "uint256"},
-    {"name": "verifyingContract", "type": "address"},
-]
-
-_chainId = 2020 # 421614
 
 class InitiateAgentWalletUseCase:
     def __init__(self, wallet_repo: IWalletRepository, key_encryptor: IKeyEncryptor) -> None:
@@ -81,24 +66,17 @@ class InitiateAgentWalletUseCase:
         await self._wallet_repo.save(agent)
 
         is_mainnet = not settings.HYPERLIQUID_USE_TESTNET
+        typed_data = build_approve_agent_eip712(
+            agent_eth_account.address,
+            dto.agent_name,
+            nonce,
+            is_mainnet=is_mainnet,
+        )
         eip712 = EIP712Package(
-            domain={
-                "name": "HyperliquidSignTransaction",
-                "version": "1",
-                "chainId": _chainId,
-                "verifyingContract": "0x0000000000000000000000000000000000000000",
-            },
-            types={
-                "HyperliquidTransaction:ApproveAgent": _APPROVE_AGENT_TYPES,
-                "EIP712Domain": _EIP712_DOMAIN_TYPES,
-            },
-            primary_type="HyperliquidTransaction:ApproveAgent",
-            message={
-                "hyperliquidChain": "Mainnet" if is_mainnet else "Testnet",
-                "agentAddress": agent_eth_account.address.lower(),
-                "agentName": dto.agent_name,
-                "nonce": nonce,
-            },
+            domain=typed_data["domain"],
+            types=typed_data["types"],
+            primary_type=typed_data["primaryType"],
+            message=typed_data["message"],
         )
 
         return InitiateAgentWalletResult(

@@ -2,6 +2,13 @@
 
 FastAPI tabanlı, Domain-Driven Design (DDD) mimarisiyle inşa edilmiş Python mikroservisi.
 
+```
+ContraFlow/
+├── src/              # Backend (FastAPI, DDD)
+├── docker/           # Docker Compose + Dockerfile'lar
+└── alembic/          # DB migration'ları
+```
+
 ## Teknoloji Yığını
 
 | Katman | Teknoloji |
@@ -271,8 +278,10 @@ SEED_ON_STARTUP=false
 docker compose -f docker/docker-compose.yml up --build -d
 ```
 
-- `app` → `http://localhost:8000`
+- `app` → http://localhost:8000
 - `postgres` ve `redis` yalnızca `contraflow_net` içinde erişilebilir (host'a port açık değil)
+
+Durdurmak: `docker compose -f docker/docker-compose.yml down`
 
 ### Local Geliştirme
 

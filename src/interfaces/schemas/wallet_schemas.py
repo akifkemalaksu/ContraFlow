@@ -2,7 +2,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from eth_utils import is_address, to_checksum_address
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import AfterValidator
 
 from src.domain.enums import AccountType
@@ -33,9 +33,11 @@ class CompleteAgentWalletResponse(BaseModel):
 
 
 class EIP712Package(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     domain: dict
     types: dict
-    primary_type: str
+    primary_type: str = Field(serialization_alias="primaryType")
     message: dict
 
 

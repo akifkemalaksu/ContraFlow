@@ -1,5 +1,3 @@
-import asyncio
-
 import httpx
 
 from src.config import settings
@@ -13,9 +11,19 @@ class HyperliquidExchangeAPI:
             "action": action,
             "nonce": nonce,
             "signature": signature,
+            "vaultAddress": None,
+            "expiresAfter": None,
         }
         url = settings.hyperliquid_base_url + "/exchange"
         async with httpx.AsyncClient() as client:
             response = await client.post(url, json=payload)
-            response.raise_for_status()
+            if response.is_error:
+                detail = response.text
+                try:
+                    detail = str(response.json())
+                except Exception:
+                    pass
+                raise ValueError(
+                    f"Hyperliquid rejected the action ({response.status_code}): {detail}"
+                )
             return response.json()

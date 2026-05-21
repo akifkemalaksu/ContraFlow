@@ -5,21 +5,10 @@ from src.config import settings
 from src.domain.enums import AccountType
 from src.domain.repositories.wallet_repository import IWalletRepository
 from src.infrastructure.hyperliquid.exchange_api import HyperliquidExchangeAPI
-
-#_SIGNATURE_CHAIN_ID = "0x66eee" # 421614 — Arbitrum Sepolia, Hyperliquid user-signed actions
-_SIGNATURE_CHAIN_ID = "0x7e4" # 2020 — Ronin
-
-
-def _split_signature(sig_hex: str) -> dict:
-    """Split a 65-byte EIP-712 hex signature into {r, s, v}."""
-    s = sig_hex.removeprefix("0x")
-    if len(s) != 130:
-        raise ValueError("Signature must be 65 bytes (130 hex chars)")
-    return {
-        "r": "0x" + s[:64],
-        "s": "0x" + s[64:128],
-        "v": int(s[128:130], 16),
-    }
+from src.infrastructure.hyperliquid.signing_helpers import (
+    build_approve_agent_post_action,
+    split_eip712_signature,
+)
 
 
 @dataclass
@@ -60,15 +49,14 @@ class CompleteAgentWalletUseCase:
             raise ValueError("Nonce mismatch — use the nonce returned from the initiate step")
 
         is_mainnet = not settings.HYPERLIQUID_USE_TESTNET
-        action = {
-            "type": "approveAgent",
-            "agentAddress": dto.agent_address.lower(),
-            "agentName": agent.name,
-            "signatureChainId": _SIGNATURE_CHAIN_ID,
-            "hyperliquidChain": "Mainnet" if is_mainnet else "Testnet",
-        }
+        action = build_approve_agent_post_action(
+            dto.agent_address,
+            agent.name,
+            dto.nonce,
+            is_mainnet=is_mainnet,
+        )
 
-        signature = _split_signature(dto.signature)
+        signature = split_eip712_signature(dto.signature)
         response = await self._exchange_api.post_action(action, signature, dto.nonce)
 
         return CompleteAgentWalletResult(status="ok", response=response)

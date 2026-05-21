@@ -13,3 +13,15 @@ dist/
 # IDE
 .idea/
 .vscode/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Misc artifacts
+/5173
+/8000
+
+# Local UI (kept outside this repo)
+ContraFlowUI/

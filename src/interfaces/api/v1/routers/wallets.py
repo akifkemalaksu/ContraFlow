@@ -106,7 +106,7 @@ async def complete_agent_wallet(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    
+
     return CompleteAgentWalletResponse(status=result.status, response=result.response)
 
 
