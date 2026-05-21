@@ -6,7 +6,8 @@ from src.domain.enums import AccountType
 from src.domain.repositories.wallet_repository import IWalletRepository
 from src.infrastructure.hyperliquid.exchange_api import HyperliquidExchangeAPI
 
-_SIGNATURE_CHAIN_ID = "0x66eee"
+#_SIGNATURE_CHAIN_ID = "0x66eee" # 421614 — Arbitrum Sepolia, Hyperliquid user-signed actions
+_SIGNATURE_CHAIN_ID = "0x7e4" # 2020 — Ronin
 
 
 def _split_signature(sig_hex: str) -> dict:
@@ -61,9 +62,8 @@ class CompleteAgentWalletUseCase:
         is_mainnet = not settings.HYPERLIQUID_USE_TESTNET
         action = {
             "type": "approveAgent",
-            "agentAddress": dto.agent_address,
+            "agentAddress": dto.agent_address.lower(),
             "agentName": agent.name,
-            "nonce": dto.nonce,
             "signatureChainId": _SIGNATURE_CHAIN_ID,
             "hyperliquidChain": "Mainnet" if is_mainnet else "Testnet",
         }

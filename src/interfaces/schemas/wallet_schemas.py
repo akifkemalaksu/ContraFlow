@@ -1,8 +1,20 @@
 from decimal import Decimal
+from typing import Annotated
 
+from eth_utils import is_address, to_checksum_address
 from pydantic import BaseModel
+from pydantic.functional_validators import AfterValidator
 
 from src.domain.enums import AccountType
+
+
+def _to_checksum(v: str) -> str:
+    if not is_address(v):
+        raise ValueError(f"Invalid Ethereum address: {v!r}")
+    return to_checksum_address(v)
+
+
+ChecksumAddress = Annotated[str, AfterValidator(_to_checksum)]
 
 
 class InitiateAgentWalletRequest(BaseModel):
@@ -10,7 +22,7 @@ class InitiateAgentWalletRequest(BaseModel):
 
 
 class CompleteAgentWalletRequest(BaseModel):
-    agent_address: str
+    agent_address: ChecksumAddress
     nonce: int
     signature: str  # 0x-prefixed 65-byte hex from eth_signTypedData_v4
 
@@ -29,11 +41,12 @@ class EIP712Package(BaseModel):
 
 class InitiateAgentWalletResponse(BaseModel):
     agent_address: str
+    signer_address: str
     eip712: EIP712Package
 
 
 class AddMasterWalletRequest(BaseModel):
-    address: str
+    address: ChecksumAddress
     name: str
 
 
@@ -69,3 +82,17 @@ class WalletInfoResponse(BaseModel):
     cross_maintenance_margin_used: Decimal
     withdrawable: Decimal
     asset_positions: list[Position]
+
+
+class AgentWalletItem(BaseModel):
+    address: str
+    name: str
+    is_active: bool | None
+    is_approved_on_hl: bool
+    valid_until: int | None
+    last_nonce: int | None
+
+
+class AgentWalletsResponse(BaseModel):
+    master_address: str
+    agents: list[AgentWalletItem]

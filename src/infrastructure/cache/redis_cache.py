@@ -25,4 +25,4 @@ class RedisCacheService(ICacheService):
         return bool(await self._redis.exists(key))
 
     async def close(self) -> None:
-        await self._redis.aclose()
+        await self._redis.close()

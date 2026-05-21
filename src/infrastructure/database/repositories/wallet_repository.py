@@ -68,6 +68,12 @@ class WalletRepository(IWalletRepository):
         await self._session.flush()
         return wallet
 
+    async def get_by_master_wallet_address(self, master_address: str) -> list[Wallet]:
+        result = await self._session.execute(
+            select(WalletModel).where(WalletModel.master_wallet_address == master_address)
+        )
+        return [_to_domain(m) for m in result.scalars().all()]
+
     async def delete(self, address: str) -> None:
         result = await self._session.execute(
             select(WalletModel).where(WalletModel.address == address)

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.use_cases.add_master_wallet import AddMasterWalletDTO, AddMasterWalletUseCase
 from src.application.use_cases.complete_agent_wallet import CompleteAgentWalletDTO, CompleteAgentWalletUseCase
+from src.application.use_cases.get_agent_wallets import GetAgentWalletsDTO, GetAgentWalletsUseCase
 from src.application.use_cases.get_wallet_info import GetWalletInfoDTO, GetWalletInfoUseCase
 from src.application.use_cases.initiate_agent_wallet import InitiateAgentWalletDTO, InitiateAgentWalletUseCase
 from src.domain.entities.user import User
@@ -12,12 +13,16 @@ from src.infrastructure.database.session import get_db_session
 from src.interfaces.api.v1.dependencies.auth import require_permission
 from src.interfaces.api.v1.dependencies.composition import (
     get_add_master_wallet_use_case,
+    get_agent_wallets_use_case,
     get_complete_agent_wallet_use_case,
     get_initiate_agent_wallet_use_case,
     get_wallet_info_use_case,
 )
 from src.interfaces.schemas.wallet_schemas import (
     AddMasterWalletRequest,
+    AgentWalletItem,
+    AgentWalletsResponse,
+    ChecksumAddress,
     CompleteAgentWalletRequest,
     CompleteAgentWalletResponse,
     EIP712Package,
@@ -49,7 +54,7 @@ async def add_master_wallet(
 
 @router.post("/{master_address}/agent", response_model=InitiateAgentWalletResponse, status_code=status.HTTP_201_CREATED)
 async def initiate_agent_wallet(
-    master_address: str,
+    master_address: ChecksumAddress,
     body: InitiateAgentWalletRequest,
     current_user: User = require_permission("wallets:write"),
     use_case: InitiateAgentWalletUseCase = Depends(get_initiate_agent_wallet_use_case),
@@ -70,6 +75,7 @@ async def initiate_agent_wallet(
     await session.commit()
     return InitiateAgentWalletResponse(
         agent_address=result.agent_address,
+        signer_address=result.signer_address,
         eip712=EIP712Package(
             domain=result.eip712.domain,
             types=result.eip712.types,
@@ -81,7 +87,7 @@ async def initiate_agent_wallet(
 
 @router.post("/{master_address}/agent/approve", response_model=CompleteAgentWalletResponse)
 async def complete_agent_wallet(
-    master_address: str,
+    master_address: ChecksumAddress,
     body: CompleteAgentWalletRequest,
     current_user: User = require_permission("wallets:write"),
     use_case: CompleteAgentWalletUseCase = Depends(get_complete_agent_wallet_use_case),
@@ -100,12 +106,39 @@ async def complete_agent_wallet(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    
     return CompleteAgentWalletResponse(status=result.status, response=result.response)
+
+
+@router.get("/{master_address}/agents", response_model=AgentWalletsResponse)
+async def get_agent_wallets(
+    master_address: ChecksumAddress,
+    current_user: User = require_permission("wallets:read"),
+    use_case: GetAgentWalletsUseCase = Depends(get_agent_wallets_use_case),
+):
+    try:
+        result = await use_case.execute(GetAgentWalletsDTO(master_wallet_address=master_address, user_id=current_user.id))
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    return AgentWalletsResponse(
+        master_address=result.master_address,
+        agents=[
+            AgentWalletItem(
+                address=a.address,
+                name=a.name,
+                is_active=a.is_active,
+                is_approved_on_hl=a.is_approved_on_hl,
+                valid_until=a.valid_until,
+                last_nonce=a.last_nonce,
+            )
+            for a in result.agents
+        ],
+    )
 
 
 @router.get("/{address}/info", response_model=WalletInfoResponse)
 async def get_wallet_info(
-    address: str,
+    address: ChecksumAddress,
     current_user: User = require_permission("wallets:read"),
     use_case: GetWalletInfoUseCase = Depends(get_wallet_info_use_case),
 ):

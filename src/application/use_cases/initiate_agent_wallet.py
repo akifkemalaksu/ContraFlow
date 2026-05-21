@@ -30,6 +30,7 @@ class EIP712Package:
 @dataclass
 class InitiateAgentWalletResult:
     agent_address: str
+    signer_address: str  # master wallet — UI enforces signing with this account
     eip712: EIP712Package
 
 
@@ -37,7 +38,7 @@ _APPROVE_AGENT_TYPES = [
     {"name": "hyperliquidChain", "type": "string"},
     {"name": "agentAddress", "type": "address"},
     {"name": "agentName", "type": "string"},
-    {"name": "nonce", "type": "uint64"},
+    {"name": "nonce", "type": "uint256"},
 ]
 
 _EIP712_DOMAIN_TYPES = [
@@ -47,9 +48,7 @@ _EIP712_DOMAIN_TYPES = [
     {"name": "verifyingContract", "type": "address"},
 ]
 
-# 0x66eee = 421614 (Arbitrum Sepolia, used by Hyperliquid for user-signed actions)
-_SIGNATURE_CHAIN_ID = 421614
-
+_chainId = 2020 # 421614
 
 class InitiateAgentWalletUseCase:
     def __init__(self, wallet_repo: IWalletRepository, key_encryptor: IKeyEncryptor) -> None:
@@ -86,7 +85,7 @@ class InitiateAgentWalletUseCase:
             domain={
                 "name": "HyperliquidSignTransaction",
                 "version": "1",
-                "chainId": _SIGNATURE_CHAIN_ID,
+                "chainId": _chainId,
                 "verifyingContract": "0x0000000000000000000000000000000000000000",
             },
             types={
@@ -96,10 +95,14 @@ class InitiateAgentWalletUseCase:
             primary_type="HyperliquidTransaction:ApproveAgent",
             message={
                 "hyperliquidChain": "Mainnet" if is_mainnet else "Testnet",
-                "agentAddress": agent_eth_account.address,
+                "agentAddress": agent_eth_account.address.lower(),
                 "agentName": dto.agent_name,
                 "nonce": nonce,
             },
         )
 
-        return InitiateAgentWalletResult(agent_address=agent_eth_account.address, eip712=eip712)
+        return InitiateAgentWalletResult(
+            agent_address=agent_eth_account.address,
+            signer_address=dto.master_wallet_address,
+            eip712=eip712,
+        )

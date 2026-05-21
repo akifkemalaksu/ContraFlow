@@ -11,9 +11,9 @@ from src.infrastructure.cache.factory import RedisCacheServiceFactory
 from src.infrastructure.database.seed import run_seed
 from src.infrastructure.database.session import AsyncSessionFactory
 from src.interfaces.api.middleware.logging import LoggingMiddleware
-from src.interfaces.api.v1.routers import wallets, auth, health, markets
+from src.interfaces.api.v1.routers import wallets, auth, health, markets, tempdebug
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s", force=True)
 
 _cache_factory = RedisCacheServiceFactory(settings.REDIS_URL)
 
@@ -51,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(wallets.router, prefix="/api/v1")
     app.include_router(markets.router, prefix="/api/v1")
+    app.include_router(tempdebug.router, prefix="/api/v1")
 
     return app
 

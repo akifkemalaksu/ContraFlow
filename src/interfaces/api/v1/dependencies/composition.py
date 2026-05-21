@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.use_cases.add_master_wallet import AddMasterWalletUseCase
 from src.application.use_cases.complete_agent_wallet import CompleteAgentWalletUseCase
+from src.application.use_cases.get_agent_wallets import GetAgentWalletsUseCase
 from src.application.use_cases.get_wallet_info import GetWalletInfoUseCase
 from src.application.use_cases.initiate_agent_wallet import InitiateAgentWalletUseCase
 from src.application.use_cases.login_user import LoginUseCase
@@ -58,3 +59,7 @@ def get_initiate_agent_wallet_use_case(session: AsyncSession = Depends(get_db_se
 
 def get_complete_agent_wallet_use_case(session: AsyncSession = Depends(get_db_session)) -> CompleteAgentWalletUseCase:
     return CompleteAgentWalletUseCase(WalletRepository(session), _hl_exchange_api)
+
+
+def get_agent_wallets_use_case(session: AsyncSession = Depends(get_db_session)) -> GetAgentWalletsUseCase:
+    return GetAgentWalletsUseCase(WalletRepository(session), _hl_client)

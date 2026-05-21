@@ -13,8 +13,6 @@ class HyperliquidExchangeAPI:
             "action": action,
             "nonce": nonce,
             "signature": signature,
-            "vaultAddress": None,
-            "expiresAfter": None,
         }
         url = settings.hyperliquid_base_url + "/exchange"
         async with httpx.AsyncClient() as client:

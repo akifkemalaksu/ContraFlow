@@ -88,6 +88,9 @@ class HyperliquidInfoClient:
     async def get_user_state(self, address: str) -> dict:
         return await asyncio.to_thread(self._info.user_state, address)
 
+    async def get_extra_agents(self, address: str) -> list[dict]:
+        return await asyncio.to_thread(self._info.extra_agents, address)
+
     def subscribe(self, subscription: dict, callback) -> int:
         return self._info.subscribe(subscription, callback)
 
