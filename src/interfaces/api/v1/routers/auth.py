@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.application.dtos.auth_dtos import UserCreateDTO
 from src.application.use_cases.login_user import LoginUseCase
 from src.application.use_cases.register_user import RegisterUserUseCase
+from src.application.use_cases.wallet_challenge import WalletChallengeUseCase
+from src.application.use_cases.wallet_verify import WalletVerifyUseCase
 from src.domain.entities.user import User
 from src.infrastructure.database.repositories.user_repository import UserRepository
 from src.infrastructure.database.session import get_db_session
@@ -16,6 +18,8 @@ from src.interfaces.api.v1.dependencies.composition import (
     get_register_use_case,
     get_token_service,
     get_user_repo,
+    get_wallet_challenge_use_case,
+    get_wallet_verify_use_case,
 )
 from src.interfaces.schemas.auth_schemas import (
     LoginRequest,
@@ -23,6 +27,9 @@ from src.interfaces.schemas.auth_schemas import (
     RegisterRequest,
     TokenResponse,
     UserResponse,
+    WalletChallengeRequest,
+    WalletChallengeResponse,
+    WalletVerifyRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -61,6 +68,29 @@ async def login(
         tokens = await use_case.execute(body.email, body.password)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    return TokenResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)
+
+
+@router.post("/wallet/challenge", response_model=WalletChallengeResponse)
+async def wallet_challenge(
+    body: WalletChallengeRequest,
+    use_case: WalletChallengeUseCase = Depends(get_wallet_challenge_use_case),
+):
+    result = await use_case.execute(body.address)
+    return WalletChallengeResponse(address=result.address, message=result.message)
+
+
+@router.post("/wallet/verify", response_model=TokenResponse)
+async def wallet_verify(
+    body: WalletVerifyRequest,
+    use_case: WalletVerifyUseCase = Depends(get_wallet_verify_use_case),
+    session: AsyncSession = Depends(get_db_session),
+):
+    try:
+        tokens = await use_case.execute(body.address, body.message, body.signature)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    await session.commit()
     return TokenResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)
 
 

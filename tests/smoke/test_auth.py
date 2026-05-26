@@ -1,4 +1,6 @@
+import eth_account
 import pytest
+from eth_account.messages import encode_defunct
 from httpx import AsyncClient
 
 
@@ -68,3 +70,35 @@ async def test_token_refresh(client: AsyncClient):
 async def test_token_refresh_invalid(client: AsyncClient):
     r = await client.post("/api/v1/auth/refresh", json={"refresh_token": "not-a-valid-token"})
     assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_wallet_auth_challenge_verify_me(client: AsyncClient):
+    acct = eth_account.Account.create()
+
+    challenge = await client.post(
+        "/api/v1/auth/wallet/challenge",
+        json={"address": acct.address},
+    )
+    assert challenge.status_code == 200
+    message = challenge.json()["message"]
+
+    signed = acct.sign_message(encode_defunct(text=message))
+    signature = signed.signature.hex()
+    if not signature.startswith("0x"):
+        signature = "0x" + signature
+
+    verify = await client.post(
+        "/api/v1/auth/wallet/verify",
+        json={"address": acct.address, "message": message, "signature": signature},
+    )
+    assert verify.status_code == 200
+    tokens = verify.json()
+    assert "access_token" in tokens
+
+    me = await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {tokens['access_token']}"},
+    )
+    assert me.status_code == 200
+    assert me.json()["email"].endswith("@contraflow.invalid")

@@ -8,7 +8,10 @@ from src.application.use_cases.get_wallet_info import GetWalletInfoUseCase
 from src.application.use_cases.initiate_agent_wallet import InitiateAgentWalletUseCase
 from src.application.use_cases.login_user import LoginUseCase
 from src.application.use_cases.register_user import RegisterUserUseCase
+from src.application.use_cases.wallet_challenge import WalletChallengeUseCase
+from src.application.use_cases.wallet_verify import WalletVerifyUseCase
 from src.config import settings
+from src.infrastructure.cache.factory import RedisCacheServiceFactory
 from src.infrastructure.database.repositories.wallet_repository import WalletRepository
 from src.infrastructure.database.repositories.user_repository import UserRepository
 from src.infrastructure.database.session import get_db_session
@@ -23,6 +26,7 @@ _hl_exchange_api = HyperliquidExchangeAPI()
 _hasher = BcryptPasswordHasher()
 _token_svc = JWTService()
 _key_encryptor = AESKeyEncryptor(settings.WALLET_ENCRYPTION_KEY)
+_cache_svc = RedisCacheServiceFactory(settings.REDIS_URL).create()
 
 
 def get_token_service() -> JWTService:
@@ -63,3 +67,17 @@ def get_complete_agent_wallet_use_case(session: AsyncSession = Depends(get_db_se
 
 def get_agent_wallets_use_case(session: AsyncSession = Depends(get_db_session)) -> GetAgentWalletsUseCase:
     return GetAgentWalletsUseCase(WalletRepository(session), _hl_client)
+
+
+def get_wallet_challenge_use_case() -> WalletChallengeUseCase:
+    return WalletChallengeUseCase(_cache_svc)
+
+
+def get_wallet_verify_use_case(session: AsyncSession = Depends(get_db_session)) -> WalletVerifyUseCase:
+    return WalletVerifyUseCase(
+        _cache_svc,
+        UserRepository(session),
+        WalletRepository(session),
+        _hasher,
+        _token_svc,
+    )

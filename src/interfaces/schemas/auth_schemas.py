@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr
 
+from src.interfaces.schemas.wallet_schemas import ChecksumAddress
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
@@ -12,6 +14,21 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class WalletChallengeRequest(BaseModel):
+    address: ChecksumAddress
+
+
+class WalletChallengeResponse(BaseModel):
+    address: str
+    message: str
+
+
+class WalletVerifyRequest(BaseModel):
+    address: ChecksumAddress
+    message: str
+    signature: str
 
 
 class TokenResponse(BaseModel):

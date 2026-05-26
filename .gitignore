@@ -23,5 +23,5 @@ dist/
 /5173
 /8000
 
-# Local UI (kept outside this repo)
-ContraFlowUI/
+# Celery
+celerybeat-schedule
